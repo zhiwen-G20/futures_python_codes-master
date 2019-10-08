@@ -46,6 +46,19 @@ def getrawdatafromcsvfile(filefullpath, datalevel=1):
     return tempdata
 
 
+def computeTickPriceFromRawData(data):
+    # tickprice
+    askprice_ser = data['AskPrice1']
+    price_diff_abs_set_list = list(set(abs(np.diff(askprice_ser.values))))
+    price_diff_abs_set_list.sort()
+    if len(price_diff_abs_set_list) > 1:
+        tickprice = np.round(price_diff_abs_set_list[1] * 1000) / 1000.0
+    else:
+        tickprice = 1.0
+    return tickprice
+
+
+
 if __name__ ==  '__main__':
     print('This is dataloading main function')
     # import  datapreprocessing

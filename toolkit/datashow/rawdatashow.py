@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from toolkit.datapreprocessing.dataloading import computeTickPriceFromRawData
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import BoundaryNorm
@@ -14,51 +15,104 @@ import matplotlib.dates as mdates
 '''
 
 
-
-
 def plotcontourTest():
     step = 1
-    x = np.arange(-10,10,step)
-    y = np.arange(-5,15,step)
+    x = np.arange(-10, 10, step)
+    y = np.arange(-5, 15, step)
 
-    X,Y = np.meshgrid(x,y)
-    Z = X**2 + Y**2
+    X, Y = np.meshgrid(x, y)
+    Z = X ** 2 + Y ** 2
 
-    plt.figure(figsize=(10,6))
-    plt.contourf(X,Y,Z)
-    plt.contour(X,Y,Z)
+    plt.figure(figsize=(10, 6))
+    plt.contourf(X, Y, Z)
+    plt.contour(X, Y, Z)
     plt.xlabel('X/m')
     plt.ylabel('Y/m')
 
     plt.show()
 
 
+def timestr2seconds(timestr):
+    '''
+    将单个时间字符串转化为s为段位的整形
+    :param timestr: 如：‘09:00:02’
+    :return:  如：ret = 09*3600+ 00*60 + 02
+    '''
+    hh, mm, ss = int(timestr[:2]), int(timestr[3:5]), int(timestr[6:8])
+    totsec = hh * 3600 + mm * 60 + ss
+    return totsec
 
 
-def plot5levelrawdata(data,model=0):
+def plot5levelrawdata(data, starttime='21:00:21', lastSeconds=10):
     '''
     根据行情文件，画出三维的5挡行情图
     :param data: dataframe, 每日行情数据
     :param model: 画图的一些选项
     :return:
     '''
-    nRows = data.shape[0]
-    nCols = data.shape[1]
-    bidPrices = np.array(data.loc[:,['BidPrice1','BidPrice2','BidPrice3','BidPrice4','BidPrice5']])
-    askPrices = np.array(data.loc[:,['AskPrice1','AskPrice2','AskPrice3','AskPrice4','AskPrice5']])
-    bidVolumes = np.array(data.loc[:,['BidVolume1','BidVolume2','BidVolume3','BidVolume4','BidVolume5']])
-    askVolumes = np.array(data.loc[:,['AskVolume1', 'AskVolume2', 'AskVolume3', 'AskVolume4', 'AskVolume5']])
-    lastPrice = np.expand_dims(np.array(data.loc[:,'LastPrice']),axis=1)
-    lastVolume = np.expand_dims(np.array(data.loc[:,'Volume']),axis=1)
-    time = np.arange(0,nRows)
-    # MinVol, MaxVol =
-    X = time.repeat(11).reshape(nRows,11).T
-    Y = np.concatenate((bidPrices,lastPrice,askPrices),axis=1).T
-    Z = np.concatenate((bidVolumes,lastVolume*0,askVolumes),axis=1).T
+
+    # 计算tickPrice
+    tickPrice = computeTickPriceFromRawData(data)
+
+    # 计算起止时间和索引值
+    lastTime = data['m_lasttime']
+    startSeconds = timestr2seconds(starttime)
+    endSeconds = startSeconds + lastSeconds
+
+    startIndex = (lastTime - startSeconds).abs().idxmin()
+    endIndex = (lastTime - endSeconds).abs().idxmin()
+
+    indices = np.arange(startIndex, endIndex)
+
+    # 获取相应的价格和委托量
+    bidPrices = np.array(data.loc[indices, ['BidPrice1', 'BidPrice2', 'BidPrice3', 'BidPrice4', 'BidPrice5']])
+    askPrices = np.array(data.loc[indices, ['AskPrice1', 'AskPrice2', 'AskPrice3', 'AskPrice4', 'AskPrice5']])
+    bidVolumes = np.array(data.loc[indices, ['BidVolume1', 'BidVolume2', 'BidVolume3', 'BidVolume4', 'BidVolume5']])
+    askVolumes = np.array(data.loc[indices, ['AskVolume1', 'AskVolume2', 'AskVolume3', 'AskVolume4', 'AskVolume5']])
+    lastPrice = np.expand_dims(np.array(data.loc[indices, 'LastPrice']), axis=1)
+    lastVolume = np.expand_dims(np.array(data.loc[indices, 'Volume']), axis=1)
+
+    # 先画出买价委托
+    xpos = indices.repeat(5)
+    ypos = askPrices.reshape(1, -1).squeeze()
+    zpos = np.zeros_like(ypos)
+    dx = 0.3
+    dy = 0.3 * tickPrice
+    dz = askVolumes.reshape(1, -1).squeeze()
+
+    bid_ypos = bidPrices.reshape(1, -1).squeeze()
+    bid_dz = bidVolumes.reshape(1, -1).squeeze()
+
+    last_xpos = indices
+    last_ypos = lastPrice.squeeze()
+    last_zpos = np.zeros_like(last_ypos)
 
 
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # ax.bar3d(xpos, ypos, zpos, dx, dy, dz, color='r', alpha=0.6, zsort='average')
+    # ax.bar3d(xpos, bid_ypos, zpos, dx, dy, bid_dz, color='b', alpha=0.6, zsort='average')
+    # ax.plot(last_xpos, last_ypos, last_zpos, color='y', alpha=0.99)
+
+    xx = indices.repeat(5).reshape(-1, 5)
+    yy = askPrices.reshape(-1, 5)
+    zz = askVolumes.reshape(-1,5)
+    bid_yy = bidPrices.reshape(-1, 5)
+    bid_zz = bidVolumes.reshape(-1, 5)
+
+    ax.plot_wireframe(xx, yy, zz, rstride=1, cstride=1, color='r', alpha=0.6)
+    ax.plot_wireframe(xx, bid_yy, bid_zz, rstride=1, cstride=1, color='b', alpha=0.6)
+    ax.plot(last_xpos, last_ypos, last_zpos, color='y', linewidth=2, alpha=0.99)
+
+    ax.set_xlabel('epoeches')
+    ax.set_ylabel('prices')
+    ax.set_zlabel('volumes')
+    plt.show()
+
+    return
 
 
+"""
 
     fig = plt.figure()
     plt.contourf(X, Y, Z)
@@ -126,5 +180,4 @@ def plot5levelrawdata(data,model=0):
     # plt.legend(loc='upper left', bbox_to_anchor=(0.0,0.6),ncol=1,fancybox=True,shadow=False)#Control the position of the legend
     plt.show()
 
-
-
+"""
