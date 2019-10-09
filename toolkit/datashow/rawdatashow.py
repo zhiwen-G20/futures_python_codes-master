@@ -43,7 +43,7 @@ def timestr2seconds(timestr):
     return totsec
 
 
-def plot5levelrawdata(data, starttime='21:00:21', lastSeconds=10):
+def plot5levelrawdata_contour(data, starttime='21:00:21', lastSeconds=10):
     '''
     根据行情文件，画出三维的5挡行情图
     :param data: dataframe, 每日行情数据
@@ -70,7 +70,175 @@ def plot5levelrawdata(data, starttime='21:00:21', lastSeconds=10):
     bidVolumes = np.array(data.loc[indices, ['BidVolume1', 'BidVolume2', 'BidVolume3', 'BidVolume4', 'BidVolume5']])
     askVolumes = np.array(data.loc[indices, ['AskVolume1', 'AskVolume2', 'AskVolume3', 'AskVolume4', 'AskVolume5']])
     lastPrice = np.expand_dims(np.array(data.loc[indices, 'LastPrice']), axis=1)
-    lastVolume = np.expand_dims(np.array(data.loc[indices, 'Volume']), axis=1)
+    # lastVolume = np.expand_dims(np.array(data.loc[indices, 'Volume']), axis=1)
+
+    # 先画出买价委托
+    last_xpos = indices
+    last_ypos = lastPrice.squeeze()
+
+    fig = plt.figure()
+    xx = indices.repeat(5).reshape(-1, 5)
+    yy = askPrices.reshape(-1, 5)
+    zz = askVolumes.reshape(-1, 5)
+    bid_yy = bidPrices.reshape(-1, 5)
+    bid_zz = bidVolumes.reshape(-1, 5)
+
+    volumes_seq = np.log(np.concatenate([zz,   bid_zz]).reshape(-1,1).squeeze())
+
+    plt.hist(volumes_seq, 10)
+    plt.show()
+    return
+
+
+    linenumber = 8
+    a1 = plt.contourf(xx, yy, zz, linenumber, alpha=0.5, cmap=plt.cm.jet)
+    b1 = plt.contour(xx, yy, zz, linenumber, colors='black', linewidths=0.1)
+    a2 = plt.contourf(xx, bid_yy, bid_zz, linenumber, alpha=0.5, cmap=plt.cm.jet)
+    b2 = plt.contour(xx, bid_yy, bid_zz, linenumber, colors='black', linewidths=0.1)
+
+    plt.plot(last_xpos, last_ypos, color='y', linewidth=2, alpha=0.99)
+
+    plt.colorbar(a1, ticks=[0, 0.25, 0.5, 0.75, 1])
+
+    plt.show()
+    return
+
+
+def plot5levelrawdata_surface(data, starttime='21:00:21', lastSeconds=10):
+    '''
+    根据行情文件，画出三维的5挡行情图
+    :param data: dataframe, 每日行情数据
+    :param model: 画图的一些选项
+    :return:
+    '''
+
+    # 计算tickPrice
+    tickPrice = computeTickPriceFromRawData(data)
+
+    # 计算起止时间和索引值
+    lastTime = data['m_lasttime']
+    startSeconds = timestr2seconds(starttime)
+    endSeconds = startSeconds + lastSeconds
+
+    startIndex = (lastTime - startSeconds).abs().idxmin()
+    endIndex = (lastTime - endSeconds).abs().idxmin()
+
+    indices = np.arange(startIndex, endIndex)
+
+    # 获取相应的价格和委托量
+    bidPrices = np.array(data.loc[indices, ['BidPrice1', 'BidPrice2', 'BidPrice3', 'BidPrice4', 'BidPrice5']])
+    askPrices = np.array(data.loc[indices, ['AskPrice1', 'AskPrice2', 'AskPrice3', 'AskPrice4', 'AskPrice5']])
+    bidVolumes = np.array(data.loc[indices, ['BidVolume1', 'BidVolume2', 'BidVolume3', 'BidVolume4', 'BidVolume5']])
+    askVolumes = np.array(data.loc[indices, ['AskVolume1', 'AskVolume2', 'AskVolume3', 'AskVolume4', 'AskVolume5']])
+    lastPrice = np.expand_dims(np.array(data.loc[indices, 'LastPrice']), axis=1)
+    # lastVolume = np.expand_dims(np.array(data.loc[indices, 'Volume']), axis=1)
+
+    # 先画出买价委托
+    last_xpos = indices
+    last_ypos = lastPrice.squeeze()
+    last_zpos = np.zeros_like(last_ypos)
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    xx = indices.repeat(5).reshape(-1, 5)
+    yy = askPrices.reshape(-1, 5)
+    zz = askVolumes.reshape(-1,5)
+    bid_yy = bidPrices.reshape(-1, 5)
+    bid_zz = bidVolumes.reshape(-1, 5)
+
+    ax.plot_surface(xx, yy, zz, rstride=1, cstride=1, cmap=plt.cm.jet, alpha=0.6)
+    ax.plot_surface(xx, bid_yy, bid_zz, rstride=1, cstride=1, cmap=plt.cm.jet, alpha=0.6)
+    ax.plot(last_xpos, last_ypos, last_zpos, color='y', linewidth=2, alpha=0.99)
+
+    ax.set_xlabel('epoeches')
+    ax.set_ylabel('prices')
+    ax.set_zlabel('volumes')
+    plt.show()
+    return
+
+
+def plot5levelrawdata_wireframe(data, starttime='21:00:21', lastSeconds=10):
+    '''
+    根据行情文件，画出三维的5挡行情图
+    :param data: dataframe, 每日行情数据
+    :param model: 画图的一些选项
+    :return:
+    '''
+
+    # 计算tickPrice
+    tickPrice = computeTickPriceFromRawData(data)
+
+    # 计算起止时间和索引值
+    lastTime = data['m_lasttime']
+    startSeconds = timestr2seconds(starttime)
+    endSeconds = startSeconds + lastSeconds
+
+    startIndex = (lastTime - startSeconds).abs().idxmin()
+    endIndex = (lastTime - endSeconds).abs().idxmin()
+
+    indices = np.arange(startIndex, endIndex)
+
+    # 获取相应的价格和委托量
+    bidPrices = np.array(data.loc[indices, ['BidPrice1', 'BidPrice2', 'BidPrice3', 'BidPrice4', 'BidPrice5']])
+    askPrices = np.array(data.loc[indices, ['AskPrice1', 'AskPrice2', 'AskPrice3', 'AskPrice4', 'AskPrice5']])
+    bidVolumes = np.array(data.loc[indices, ['BidVolume1', 'BidVolume2', 'BidVolume3', 'BidVolume4', 'BidVolume5']])
+    askVolumes = np.array(data.loc[indices, ['AskVolume1', 'AskVolume2', 'AskVolume3', 'AskVolume4', 'AskVolume5']])
+    lastPrice = np.expand_dims(np.array(data.loc[indices, 'LastPrice']), axis=1)
+    # lastVolume = np.expand_dims(np.array(data.loc[indices, 'Volume']), axis=1)
+
+    # 先画出买价委托
+    last_xpos = indices
+    last_ypos = lastPrice.squeeze()
+    last_zpos = np.zeros_like(last_ypos)
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    xx = indices.repeat(5).reshape(-1, 5)
+    yy = askPrices.reshape(-1, 5)
+    zz = askVolumes.reshape(-1,5)
+    bid_yy = bidPrices.reshape(-1, 5)
+    bid_zz = bidVolumes.reshape(-1, 5)
+
+    ax.plot_wireframe(xx, yy, zz, rstride=1, cstride=1, color='r', alpha=0.6)
+    ax.plot_wireframe(xx, bid_yy, bid_zz, rstride=1, cstride=1, color='b', alpha=0.6)
+    ax.plot(last_xpos, last_ypos, last_zpos, color='y', linewidth=2, alpha=0.99)
+
+    ax.set_xlabel('epoeches')
+    ax.set_ylabel('prices')
+    ax.set_zlabel('volumes')
+    plt.show()
+    return
+
+def plot5levelrawdata_bar3d(data, starttime='21:00:21', lastSeconds=10):
+    '''
+    根据行情文件，画出三维的5挡行情图
+    :param data: dataframe, 每日行情数据
+    :param model: 画图的一些选项
+    :return:
+    '''
+
+    # 计算tickPrice
+    tickPrice = computeTickPriceFromRawData(data)
+
+    # 计算起止时间和索引值
+    lastTime = data['m_lasttime']
+    startSeconds = timestr2seconds(starttime)
+    endSeconds = startSeconds + lastSeconds
+
+    startIndex = (lastTime - startSeconds).abs().idxmin()
+    endIndex = (lastTime - endSeconds).abs().idxmin()
+
+    indices = np.arange(startIndex, endIndex)
+
+    # 获取相应的价格和委托量
+    bidPrices = np.array(data.loc[indices, ['BidPrice1', 'BidPrice2', 'BidPrice3', 'BidPrice4', 'BidPrice5']])
+    askPrices = np.array(data.loc[indices, ['AskPrice1', 'AskPrice2', 'AskPrice3', 'AskPrice4', 'AskPrice5']])
+    bidVolumes = np.array(data.loc[indices, ['BidVolume1', 'BidVolume2', 'BidVolume3', 'BidVolume4', 'BidVolume5']])
+    askVolumes = np.array(data.loc[indices, ['AskVolume1', 'AskVolume2', 'AskVolume3', 'AskVolume4', 'AskVolume5']])
+    lastPrice = np.expand_dims(np.array(data.loc[indices, 'LastPrice']), axis=1)
+    # lastVolume = np.expand_dims(np.array(data.loc[indices, 'Volume']), axis=1)
 
     # 先画出买价委托
     xpos = indices.repeat(5)
@@ -90,19 +258,9 @@ def plot5levelrawdata(data, starttime='21:00:21', lastSeconds=10):
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    # ax.bar3d(xpos, ypos, zpos, dx, dy, dz, color='r', alpha=0.6, zsort='average')
-    # ax.bar3d(xpos, bid_ypos, zpos, dx, dy, bid_dz, color='b', alpha=0.6, zsort='average')
-    # ax.plot(last_xpos, last_ypos, last_zpos, color='y', alpha=0.99)
-
-    xx = indices.repeat(5).reshape(-1, 5)
-    yy = askPrices.reshape(-1, 5)
-    zz = askVolumes.reshape(-1,5)
-    bid_yy = bidPrices.reshape(-1, 5)
-    bid_zz = bidVolumes.reshape(-1, 5)
-
-    ax.plot_wireframe(xx, yy, zz, rstride=1, cstride=1, color='r', alpha=0.6)
-    ax.plot_wireframe(xx, bid_yy, bid_zz, rstride=1, cstride=1, color='b', alpha=0.6)
-    ax.plot(last_xpos, last_ypos, last_zpos, color='y', linewidth=2, alpha=0.99)
+    ax.bar3d(xpos, ypos, zpos, dx, dy, dz, color='r', alpha=0.6, zsort='average')
+    ax.bar3d(xpos, bid_ypos, zpos, dx, dy, bid_dz, color='b', alpha=0.6, zsort='average')
+    ax.plot(last_xpos, last_ypos, last_zpos, color='y', alpha=0.99)
 
     ax.set_xlabel('epoeches')
     ax.set_ylabel('prices')
