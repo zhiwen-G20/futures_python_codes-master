@@ -79,15 +79,15 @@ def plot5levelrawdata_contour(data, starttime='21:00:21', lastSeconds=10):
     fig = plt.figure()
     xx = indices.repeat(5).reshape(-1, 5)
     yy = askPrices.reshape(-1, 5)
-    zz = askVolumes.reshape(-1, 5)
+    zz = np.log(askVolumes.reshape(-1, 5))
     bid_yy = bidPrices.reshape(-1, 5)
-    bid_zz = bidVolumes.reshape(-1, 5)
+    bid_zz = np.log(bidVolumes.reshape(-1, 5))
 
-    volumes_seq = np.log(np.concatenate([zz,   bid_zz]).reshape(-1,1).squeeze())
+    # volumes_seq = np.log(np.concatenate([zz,   bid_zz]).reshape(-1,1).squeeze())
 
-    plt.hist(volumes_seq, 10)
-    plt.show()
-    return
+    # plt.hist(volumes_seq, 10)
+    # plt.show()
+    # return
 
 
     linenumber = 8
@@ -96,9 +96,9 @@ def plot5levelrawdata_contour(data, starttime='21:00:21', lastSeconds=10):
     a2 = plt.contourf(xx, bid_yy, bid_zz, linenumber, alpha=0.5, cmap=plt.cm.jet)
     b2 = plt.contour(xx, bid_yy, bid_zz, linenumber, colors='black', linewidths=0.1)
 
-    plt.plot(last_xpos, last_ypos, color='y', linewidth=2, alpha=0.99)
+    plt.plot(last_xpos, last_ypos, color='r', linewidth=2, alpha=0.99)
 
-    plt.colorbar(a1, ticks=[0, 0.25, 0.5, 0.75, 1])
+    plt.colorbar(a1)
 
     plt.show()
     return
